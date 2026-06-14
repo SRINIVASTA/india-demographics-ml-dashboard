@@ -94,14 +94,21 @@ def generate_forecasts(df):
         m_deaths = Ridge(alpha=1.0).fit(X_train_poly, df_modern['deaths_millions'].values)
         p_pop, p_birth, p_death = m_pop.predict(X_future_poly), m_births.predict(X_future_poly), m_deaths.predict(X_future_poly)
         
-        last_pop = df_modern[df_modern['year'] == 2026]['population_millions'].values
-        shift_pop, shift_birth, shift_death = last_pop - p_pop, df_modern[df_modern['year'] == 2026]['births_millions'].values - p_birth, df_modern[df_modern['year'] == 2026]['deaths_millions'].values - p_death
-        growth_step = (last_pop - df_modern[df_modern['year'] == 2025]['population_millions'].values) * 0.95
+        last_pop = df_modern[df_modern['year'] == 2026]['population_millions'].values[0]
+        last_birth = df_modern[df_modern['year'] == 2026]['births_millions'].values[0]
+        last_death = df_modern[df_modern['year'] == 2026]['deaths_millions'].values[0]
+        
+        # FIXED: Extracting values as single scalars using item() or float conversion to prevent ValueError arrays loop
+        shift_pop = float(last_pop - p_pop[0])
+        shift_birth = float(last_birth - p_birth[0])
+        shift_death = float(last_death - p_death[0])
+        
+        growth_step = float((last_pop - df_modern[df_modern['year'] == 2025]['population_millions'].values[0]) * 0.95)
         
         for idx, yr in enumerate(range(2027, 2037)):
-            p_val = max(0.001, p_pop[idx] + shift_pop + (yr - 2026) * growth_step)
-            b_val = max(0.000, p_birth[idx] + shift_birth)
-            d_val = max(0.000, p_death[idx] + shift_death)
+            p_val = max(0.001, float(p_pop[idx]) + shift_pop + (yr - 2026) * growth_step)
+            b_val = max(0.000, float(p_birth[idx]) + shift_birth)
+            d_val = max(0.000, float(p_death[idx]) + shift_death)
             ml_rows.append({
                 "year": yr, "region": region, "population_millions": round(p_val, 3),
                 "births_millions": round(b_val, 3), "deaths_millions": round(d_val, 3),
