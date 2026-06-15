@@ -213,3 +213,35 @@ st.download_button(
     file_name=f"{selected_region.lower().replace(' ', '_')}_demographics_extract.csv",
     mime="text/csv"
 )
+# ==========================================
+# 📊 INTERNAL PYTEST AUTOMATION EXPANDER
+# ==========================================
+st.markdown("---")
+st.subheader("🛠️ Developer Quality Assurance Suite")
+
+with st.expander("🔐 Run System Validation Test Suite (Pytest Docs)"):
+    st.write("Click the button below to headlessly execute your active `test_app.py` suite against the live data model layers.")
+    
+    if st.button("🚀 Execute Pytest Suite Engine"):
+        import subprocess
+        
+        with st.spinner("Running automated mathematical checks and UI structure validations..."):
+            try:
+                # Triggers the hidden system terminal to run pytest headlessly
+                result = subprocess.run(
+                    ["python", "-m", "pytest", "test_app.py", "-v"], 
+                    capture_output=True, 
+                    text=True
+                )
+                
+                # Check if the execution returned a passing status
+                if result.returncode == 0:
+                    st.success("✅ ALL CODE CHECK PASSES: Your backend math equations and model constraints are completely stable!")
+                    # Displays a beautiful green code console block with the pass metrics
+                    st.code(result.stdout, language="text")
+                else:
+                    st.error("❌ TESTING ANOMALY SPOTTED: One of your analytical assertion blocks returned an index mismatch error.")
+                    st.code(result.stderr + "\n" + result.stdout, language="text")
+                    
+            except Exception as e:
+                st.exception(f"Critical execution error tracking terminal paths: {e}")
