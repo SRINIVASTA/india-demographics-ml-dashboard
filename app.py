@@ -6,7 +6,7 @@ from sklearn.linear_model import Ridge
 from sklearn.preprocessing import PolynomialFeatures
 
 st.set_page_config(page_title="India Master Demographic Analyzer", layout="wide")
-st.title("📊 India State & UT Demographic Dashboard (1901–2036)")
+st.title(f"📊 {selected_region} Demographic Dashboard (1901–2036)")
 st.subheader("Official Government Transitions Fused with Continuous ML Projections")
 @st.cache_data
 def load_all_india_matrix():
