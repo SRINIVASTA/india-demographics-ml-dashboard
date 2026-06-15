@@ -223,25 +223,44 @@ with st.expander("🔐 Run System Validation Test Suite (Pytest Docs)"):
     st.write("Click the button below to headlessly execute your active `test_app.py` suite against the live data model layers.")
     
     if st.button("🚀 Execute Pytest Suite Engine"):
-        import subprocess
+        import sys
+        import io
         
         with st.spinner("Running automated mathematical checks and UI structure validations..."):
             try:
-                # Triggers the hidden system terminal to run pytest headlessly
-                result = subprocess.run(
-                    ["python", "-m", "pytest", "test_app.py", "-v"], 
-                    capture_output=True, 
-                    text=True
-                )
+                # 1. Dynamically import pytest into the current execution space
+                import pytest
+            except ImportError:
+                # Fallback installation step if Streamlit's environment hasn't initialized the requirement yet
+                import pip
+                pip.main(["install", "pytest"])
+                import pytest
+            
+            try:
+                # 2. Intercept and capture standard console print outputs
+                captured_buffer = io.StringIO()
+                sys.stdout = captured_buffer
+                sys.stderr = captured_buffer
                 
-                # Check if the execution returned a passing status
-                if result.returncode == 0:
+                # 3. Call the pytest engine cleanly via internal memory APIs
+                exit_code = pytest.main(["test_app.py", "-v"])
+                
+                # 4. Restore regular system console targets
+                sys.stdout = sys.__stdout__
+                sys.stderr = sys.__stderr__
+                
+                # Read captured string metrics log
+                console_logs = captured_buffer.getvalue()
+                
+                if exit_code == 0:
                     st.success("✅ ALL CODE CHECK PASSES: Your backend math equations and model constraints are completely stable!")
-                    # Displays a beautiful green code console block with the pass metrics
-                    st.code(result.stdout, language="text")
+                    st.code(console_logs, language="text")
                 else:
-                    st.error("❌ TESTING ANOMALY SPOTTED: One of your analytical assertion blocks returned an index mismatch error.")
-                    st.code(result.stderr + "\n" + result.stdout, language="text")
+                    st.error("❌ TESTING ANOMALY SPOTTED: One of your analytical assertion blocks returned a verification mismatch error.")
+                    st.code(console_logs, language="text")
                     
             except Exception as e:
-                st.exception(f"Critical execution error tracking terminal paths: {e}")
+                # Safety fallback to ensure consoles restore on fatal crashes
+                sys.stdout = sys.__stdout__
+                sys.stderr = sys.__stderr__
+                st.exception(f"Critical execution error tracking memory buffers: {e}")
