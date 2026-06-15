@@ -120,6 +120,12 @@ df_complete = generate_forecasts(df_base)
 st.sidebar.header("🎛️ Dashboard Configuration")
 selected_region = st.sidebar.selectbox("Select Target State/UT:", sorted(df_complete['region'].unique()))
 
+# ==========================================
+# 2. DASHBOARD HEADERS (Now completely safe!)
+# ==========================================
+st.title(f"📊 {selected_region} Demographic Dashboard (1901–2036)")
+st.subheader("Official Government Transitions Fused with Continuous ML Projections")
+
 available_years = sorted(list(df_complete['year'].unique()))
 from_year, to_year = st.sidebar.select_slider("Select Project Analysis Horizon Window:", options=available_years, value=(2011, 2036))
 
