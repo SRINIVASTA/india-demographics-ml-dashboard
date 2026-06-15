@@ -105,16 +105,15 @@ def generate_forecasts(df, model_type="Ridge"):
         p_birth = m_births.predict(X_future_poly)
         p_death = m_deaths.predict(X_future_poly)
         
-        last_pop = df_modern[df_modern['year'] == 2026]['population_millions'].values[0]
-        last_birth = df_modern[df_modern['year'] == 2026]['births_millions'].values[0]
-        last_death = df_modern[df_modern['year'] == 2026]['deaths_millions'].values[0]
+        last_pop = df_modern[df_modern['year'] == 2026]['population_millions'].values
+        last_birth = df_modern[df_modern['year'] == 2026]['births_millions'].values
+        last_death = df_modern[df_modern['year'] == 2026]['deaths_millions'].values
         
-        # FIXED: Pass a proper 2D array [[2026]] to avoid shape validation crashes
-        shift_pop = float(last_pop - m_pop.predict(poly.transform([[2026]]))[0])
-        shift_birth = float(last_birth - m_births.predict(poly.transform([[2026]]))[0])
-        shift_death = float(last_death - m_deaths.predict(poly.transform([[2026]]))[0])
+        shift_pop = float(last_pop - m_pop.predict(poly.transform([[2026]])))
+        shift_birth = float(last_birth - m_births.predict(poly.transform([[2026]])))
+        shift_death = float(last_death - m_deaths.predict(poly.transform([[2026]])))
         
-        growth_step = float((last_pop - df_modern[df_modern['year'] == 2025]['population_millions'].values[0]) * 0.95)
+        growth_step = float((last_pop - df_modern[df_modern['year'] == 2025]['population_millions'].values) * 0.95)
         
         residuals = df_modern['population_millions'].values - m_pop.predict(X_train_poly)
         sigma = np.std(residuals) if np.std(residuals) > 0 else 0.1
@@ -139,17 +138,28 @@ def generate_forecasts(df, model_type="Ridge"):
 # ==========================================
 st.sidebar.header("🎛️ Dashboard Configuration")
 regions_list = sorted(df_base['region'].unique())
-selected_region = st.sidebar.selectbox("Select Target State/UT:", regions_list, index=regions_list.index("India (Total Country)"))
+
+# Added unique keys to guarantee element isolation inside memory
+selected_region = st.sidebar.selectbox(
+    "Select Target State/UT:", regions_list, 
+    index=regions_list.index("India (Total Country)"),
+    key="dashboard_region_dropdown"
+)
 
 selected_model = st.sidebar.radio(
     "Machine Learning Ensemble Strategy:", 
     options=["Ridge", "Lasso", "Linear Regression"],
-    help="Switch estimators to view variance across non-linear forecast projection matrices."
+    help="Switch estimators to view variance across forecast matrices.",
+    key="dashboard_ml_radio"
 )
 
 df_complete = generate_forecasts(df_base, model_type=selected_model)
 available_years = sorted(list(df_complete['year'].unique()))
-from_year, to_year = st.sidebar.select_slider("Select Project Analysis Horizon Window:", options=available_years, value=(1951, 2036))
+from_year, to_year = st.sidebar.select_slider(
+    "Select Project Analysis Horizon Window:", 
+    options=available_years, value=(1951, 2036),
+    key="dashboard_horizon_slider"
+)
 
 # ==========================================
 # SCREEN HEADERS & USER RENDERING LAYERS
@@ -188,8 +198,6 @@ if not df_hist.empty:
 if not df_fore.empty:
     h8, = ax2.plot(df_fore['year'], df_fore['population_millions'], color='indigo', linestyle=':', marker='d', alpha=0.7, label=f'Population ({selected_model})')
     handles.append(h8)
-    
-    # Render shaded 95% Confidence bounds area
     ax2.fill_between(df_fore['year'], df_fore['pop_lower_ci'], df_fore['pop_upper_ci'], color='indigo', alpha=0.15, label='95% Confidence Band')
 
 ax2.set_ylabel('Total Cumulative Population (In Millions)', color='indigo', fontsize=11, fontweight='bold')
@@ -211,8 +219,10 @@ st.download_button(
     label="📥 Download Currently Selected Sheet Extract View as CSV",
     data=df_display.to_csv(index=False).encode('utf-8'),
     file_name=f"{selected_region.lower().replace(' ', '_')}_demographics_extract.csv",
-    mime="text/csv"
+    mime="text/csv",
+    key="dashboard_download_button"
 )
+
 # ==========================================
 # 📊 INTERNAL PYTEST AUTOMATION EXPANDER
 # ==========================================
@@ -220,47 +230,33 @@ st.markdown("---")
 st.subheader("🛠️ Developer Quality Assurance Suite")
 
 with st.expander("🔐 Run System Validation Test Suite (Pytest Docs)"):
-    st.write("Click the button below to headlessly execute your active `test_app.py` suite against the live data model layers.")
+    st.write("Click the button below to headlessly execute your active `test_app.py` suite.")
     
-    if st.button("🚀 Execute Pytest Suite Engine"):
+    if st.button("🚀 Execute Pytest Suite Engine", key="dashboard_pytest_trigger_btn"):
         import sys
         import io
         
-        with st.spinner("Running automated mathematical checks and UI structure validations..."):
+        with st.spinner("Running automated mathematical checks..."):
             try:
-                # 1. Dynamically import pytest into the current execution space
                 import pytest
-            except ImportError:
-                # Fallback installation step if Streamlit's environment hasn't initialized the requirement yet
-                import pip
-                pip.main(["install", "pytest"])
-                import pytest
-            
-            try:
-                # 2. Intercept and capture standard console print outputs
                 captured_buffer = io.StringIO()
                 sys.stdout = captured_buffer
                 sys.stderr = captured_buffer
                 
-                # 3. Call the pytest engine cleanly via internal memory APIs
-                exit_code = pytest.main(["test_app.py", "-v"])
+                exit_code = pytest.main(["test_app.py", "-v", "-p", "no:warnings"])
                 
-                # 4. Restore regular system console targets
                 sys.stdout = sys.__stdout__
                 sys.stderr = sys.__stderr__
-                
-                # Read captured string metrics log
                 console_logs = captured_buffer.getvalue()
                 
                 if exit_code == 0:
-                    st.success("✅ ALL CODE CHECK PASSES: Your backend math equations and model constraints are completely stable!")
+                    st.success("✅ ALL CODE CHECK PASSES: Your backend math equations are stable!")
                     st.code(console_logs, language="text")
                 else:
-                    st.error("❌ TESTING ANOMALY SPOTTED: One of your analytical assertion blocks returned a verification mismatch error.")
+                    st.error("❌ TESTING ANOMALY SPOTTED: One of your analytical assertion blocks failed.")
                     st.code(console_logs, language="text")
                     
             except Exception as e:
-                # Safety fallback to ensure consoles restore on fatal crashes
                 sys.stdout = sys.__stdout__
                 sys.stderr = sys.__stderr__
-                st.exception(f"Critical execution error tracking memory buffers: {e}")
+                st.exception(f"Critical execution error: {e}")
