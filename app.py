@@ -47,8 +47,10 @@ def load_all_india_matrix():
         "Ladakh": {1901: (0.020, 41.00, 39.50), 1951: (0.040, 33.50, 18.20), 2011: (0.274, 14.20, 6.50), 2026: (0.310, 12.50, 9.270)},
         "India (Total Country)": {1901: (238.400, 45.80, 44.40), 1951: (361.090, 39.90, 27.40), 2011: (1210.190, 21.80, 7.10), 2026: (1448.460, 15.50, 7.30)}
     }
-time_series_rows = []
+ # FIXED: Exactly 4 leading spaces of clean nested block indentation applied below
+    time_series_rows = []
     all_years = sorted(list(range(1901, 1942, 10)) + list(range(1951, 2027)))
+    
     for region, anchors in certified_anchors.items():
         anchor_years = sorted(list(anchors.keys()))
         for yr in all_years:
@@ -73,7 +75,6 @@ time_series_rows = []
                 "data_type": "Government Certified Base"
             })
     return pd.DataFrame(time_series_rows)
-
 df_base = load_all_india_matrix()
 
 @st.cache_data
