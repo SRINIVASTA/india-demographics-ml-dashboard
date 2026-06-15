@@ -18,21 +18,25 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
-        cache: 'pip' # Automatically caches dependencies to speed up future runs
+        cache: 'pip'
 
     - name: Install Project Dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pytest-html # Optional: installs plugin to generate visual reports
+        pip install pytest-html
 
-    - name: Run Test Suite with Pytest
+    - name: Run Test Suite with Pytest Headless Context
+      # FIXED: Uses headless execution configurations to prevent Streamlit widget crashes
       run: |
-        python -m pytest test_app.py -v --html=report.html --self-contained-html
+        python -m pytest test_app.py -v --html=report.html --self-contained-html -o xvfb=false
+      env:
+        STREAMLIT_RUN_HEADLESS: "true"
+        STREAMLIT_BROWSER_GATHER_USAGE: "false"
 
     - name: Upload Test Report Artifact
       uses: actions/upload-artifact@v4
-      if: always() # Ensures report uploads even if tests fail
+      if: always()
       with:
         name: pytest-html-report
         path: report.html
