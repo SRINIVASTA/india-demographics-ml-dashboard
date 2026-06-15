@@ -2,10 +2,12 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import Ridge, Lasso, LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 
+# Rule: This MUST remain the absolute first execution block to avoid breaking Streamlit
 st.set_page_config(page_title="India Master Demographic Analyzer", layout="wide")
+
 @st.cache_data
 def load_all_india_matrix():
     certified_anchors = {
@@ -38,7 +40,7 @@ def load_all_india_matrix():
         "Goa": {1901: (0.470, 40.50, 39.10), 1951: (0.540, 32.10, 16.50), 2011: (1.460, 12.30, 6.10), 2026: (1.620, 11.20, 7.500)},
         "Arunachal Pradesh": {1901: (0.020, 45.10, 43.10), 1951: (0.060, 39.10, 23.20), 2011: (1.380, 18.20, 5.80), 2026: (1.680, 16.10, 6.580)},
         "Mizoram": {1901: (0.080, 44.50, 42.10), 1951: (0.200, 37.80, 20.10), 2011: (1.090, 15.40, 4.40), 2026: (1.320, 13.90, 5.570)},
-        "Sikkim": {1901: (0.060, 41.20, 39.50), 1951: (0.140, 33.5, 17.20), 2011: (0.610, 16.20, 5.20), 2026: (0.710, 14.10, 6.210)},
+        "Sikkim": {1901: (0.060, 41.20, 39.50), 1951: (0.140, 33.50, 17.20), 2011: (0.610, 16.20, 5.20), 2026: (0.710, 14.10, 6.210)},
         "Puducherry": {1901: (0.240, 41.50, 39.80), 1951: (0.320, 34.20, 18.10), 2011: (1.240, 14.60, 6.90), 2026: (1.780, 13.20, 7.580)},
         "Chandigarh": {1901: (0.020, 43.10, 41.20), 1951: (0.060, 35.20, 17.50), 2011: (1.060, 14.10, 4.50), 2026: (1.350, 12.80, 5.390)},
         "Dadra and Nagar Haveli and Daman and Diu": {1901: (0.030, 44.50, 42.10), 1951: (0.080, 38.20, 21.00), 2011: (0.580, 24.10, 4.80), 2026: (0.910, 21.20, 4.720)},
@@ -47,10 +49,8 @@ def load_all_india_matrix():
         "Ladakh": {1901: (0.020, 41.00, 39.50), 1951: (0.040, 33.50, 18.20), 2011: (0.274, 14.20, 6.50), 2026: (0.310, 12.50, 9.270)},
         "India (Total Country)": {1901: (238.400, 45.80, 44.40), 1951: (361.090, 39.90, 27.40), 2011: (1210.190, 21.80, 7.10), 2026: (1448.460, 15.50, 7.30)}
     }
- # FIXED: Exactly 4 leading spaces of clean nested block indentation applied below
     time_series_rows = []
     all_years = sorted(list(range(1901, 1942, 10)) + list(range(1951, 2027)))
-    
     for region, anchors in certified_anchors.items():
         anchor_years = sorted(list(anchors.keys()))
         for yr in all_years:
@@ -75,12 +75,21 @@ def load_all_india_matrix():
                 "data_type": "Government Certified Base"
             })
     return pd.DataFrame(time_series_rows)
-df_base = load_all_india_matrix()
 
+df_base = load_all_india_matrix()
 @st.cache_data
-def generate_forecasts(df):
+def generate_forecasts(df, model_type="Ridge"):
     ml_rows = []
     future_years = np.array(range(2027, 2037)).reshape(-1, 1)
+    
+    # Ensemble selection logic
+    if model_type == "Lasso":
+        estimator = Lasso(alpha=0.01, max_iter=10000)
+    elif model_type == "Linear Regression":
+        estimator = LinearRegression()
+    else:
+        estimator = Ridge(alpha=1.0)
+        
     for region in df['region'].unique():
         df_modern = df[(df['region'] == region) & (df['year'] >= 1951)].sort_values('year')
         X_train = df_modern[['year']].values
@@ -88,54 +97,66 @@ def generate_forecasts(df):
         X_train_poly = poly.fit_transform(X_train)
         X_future_poly = poly.transform(future_years)
         
-        m_pop = Ridge(alpha=1.0).fit(X_train_poly, df_modern['population_millions'].values)
+        m_pop = estimator.fit(X_train_poly, df_modern['population_millions'].values)
         m_births = Ridge(alpha=1.0).fit(X_train_poly, df_modern['births_millions'].values)
         m_deaths = Ridge(alpha=1.0).fit(X_train_poly, df_modern['deaths_millions'].values)
-        p_pop, p_birth, p_death = m_pop.predict(X_future_poly), m_births.predict(X_future_poly), m_deaths.predict(X_future_poly)
         
-        last_pop = df_modern[df_modern['year'] == 2026]['population_millions'].values[0]
-        last_birth = df_modern[df_modern['year'] == 2026]['births_millions'].values[0]
-        last_death = df_modern[df_modern['year'] == 2026]['deaths_millions'].values[0]
+        p_pop = m_pop.predict(X_future_poly)
+        p_birth = m_births.predict(X_future_poly)
+        p_death = m_deaths.predict(X_future_poly)
         
-        shift_pop = float(last_pop - p_pop[0])
-        shift_birth = float(last_birth - p_birth[0])
-        shift_death = float(last_death - p_death[0])
+        last_pop = df_modern[df_modern['year'] == 2026]['population_millions'].values
+        last_birth = df_modern[df_modern['year'] == 2026]['births_millions'].values
+        last_death = df_modern[df_modern['year'] == 2026]['deaths_millions'].values
         
-        growth_step = float((last_pop - df_modern[df_modern['year'] == 2025]['population_millions'].values[0]) * 0.95)
+        shift_pop = float(last_pop - m_pop.predict(poly.transform([])))
+        shift_birth = float(last_birth - m_births.predict(poly.transform([])))
+        shift_death = float(last_death - m_deaths.predict(poly.transform([])))
+        
+        growth_step = float((last_pop - df_modern[df_modern['year'] == 2025]['population_millions'].values) * 0.95)
+        
+        # Calculate standard deviation residuals for 95% CI fanning
+        residuals = df_modern['population_millions'].values - m_pop.predict(X_train_poly)
+        sigma = np.std(residuals) if np.std(residuals) > 0 else 0.1
         
         for idx, yr in enumerate(range(2027, 2037)):
             p_val = max(0.001, float(p_pop[idx]) + shift_pop + (yr - 2026) * growth_step)
             b_val = max(0.000, float(p_birth[idx]) + shift_birth)
             d_val = max(0.000, float(p_death[idx]) + shift_death)
+            
+            uncertainty_spread = sigma * np.sqrt(yr - 2026) * 1.96
+            
             ml_rows.append({
                 "year": yr, "region": region, "population_millions": round(p_val, 3),
+                "pop_lower_ci": round(max(0.001, p_val - uncertainty_spread), 3),
+                "pop_upper_ci": round(p_val + uncertainty_spread, 3),
                 "births_millions": round(b_val, 3), "deaths_millions": round(d_val, 3),
                 "net_growth_millions": round(b_val - d_val, 3), "data_type": "ML Forecast Projection"
             })
     return pd.concat([df, pd.DataFrame(ml_rows)], ignore_index=True)
-
-df_complete = generate_forecasts(df_base)
-
 # ==========================================
-# 1. DEFINE SIDEBAR CONFIGURATIONS FIRST
+# SIDEBAR NAVIGATION CONTROL ENGINE
 # ==========================================
 st.sidebar.header("🎛️ Dashboard Configuration")
-selected_region = st.sidebar.selectbox("Select Target State/UT:", sorted(df_complete['region'].unique()))
+regions_list = sorted(df_base['region'].unique())
+selected_region = st.sidebar.selectbox("Select Target State/UT:", regions_list, index=regions_list.index("India (Total Country)"))
 
+selected_model = st.sidebar.radio(
+    "Machine Learning Ensemble Strategy:", 
+    options=["Ridge", "Lasso", "Linear Regression"],
+    help="Switch estimators to view variance across non-linear forecast projection matrices."
+)
+
+df_complete = generate_forecasts(df_base, model_type=selected_model)
 available_years = sorted(list(df_complete['year'].unique()))
-# Keep defaults at (1951, 2036) or custom bounds to map the slider range safely
 from_year, to_year = st.sidebar.select_slider("Select Project Analysis Horizon Window:", options=available_years, value=(1951, 2036))
 
 # ==========================================
-# 2. DYNAMIC DASHBOARD HEADERS (Completely Fixed!)
+# SCREEN HEADERS & USER RENDERING LAYERS
 # ==========================================
-# FIXED: Using from_year, to_year, and selected_region variables directly
 st.title(f"📊 {selected_region} Demographic Dashboard ({from_year}–{to_year})")
-st.caption(f"Blends historical tracking benchmarks with continuous Ridge Regression forecasting updates for {selected_region}.")
+st.caption(f"Blends tracking benchmarks with continuous **{selected_model} Engine** forecasts and 95% Confidence Bounds.")
 
-st.subheader("Official Government Transitions Fused with Continuous ML Projections")
-
-# Filter execution matrix using configured scope boundaries
 df_display = df_complete[(df_complete['region'] == selected_region) & (df_complete['year'] >= from_year) & (df_complete['year'] <= to_year)].sort_values('year')
 df_hist = df_display[df_display['data_type'] == "Government Certified Base"]
 df_fore = df_display[df_display['data_type'] == "ML Forecast Projection"]
@@ -150,9 +171,9 @@ if not df_hist.empty:
     handles.extend([h1, h2, h3])
 
 if not df_fore.empty:
-    h4, = ax1.plot(df_fore['year'], df_fore['births_millions'], color='teal', linestyle=':', marker='o', alpha=0.7, label='Births (ML Forecast)')
-    h5, = ax1.plot(df_fore['year'], df_fore['deaths_millions'], color='crimson', linestyle=':', marker='s', alpha=0.7, label='Deaths (ML Forecast)')
-    h6, = ax1.plot(df_fore['year'], df_fore['net_growth_millions'], color='forestgreen', linestyle=':', marker='^', alpha=0.7, label='Net Growth (ML Forecast)')
+    h4, = ax1.plot(df_fore['year'], df_fore['births_millions'], color='teal', linestyle=':', marker='o', alpha=0.7, label='Births (ML)')
+    h5, = ax1.plot(df_fore['year'], df_fore['deaths_millions'], color='crimson', linestyle=':', marker='s', alpha=0.7, label='Deaths (ML)')
+    h6, = ax1.plot(df_fore['year'], df_fore['net_growth_millions'], color='forestgreen', linestyle=':', marker='^', alpha=0.7, label='Net Growth (ML)')
     handles.extend([h4, h5, h6])
 
 ax1.set_ylabel('Annual Events Volume (In Millions)', color='black', fontsize=11, fontweight='bold')
@@ -163,23 +184,26 @@ ax2 = ax1.twinx()
 if not df_hist.empty:
     h7, = ax2.plot(df_hist['year'], df_hist['population_millions'], color='indigo', linestyle='-', marker='d', linewidth=2, label='Population (Historical)')
     handles.append(h7)
+
 if not df_fore.empty:
-    h8, = ax2.plot(df_fore['year'], df_fore['population_millions'], color='indigo', linestyle=':', marker='d', alpha=0.7, label='Population (ML Forecast)')
+    h8, = ax2.plot(df_fore['year'], df_fore['population_millions'], color='indigo', linestyle=':', marker='d', alpha=0.7, label=f'Population ({selected_model})')
     handles.append(h8)
+    
+    # Render shaded 95% Confidence bounds area
+    ax2.fill_between(df_fore['year'], df_fore['pop_lower_ci'], df_fore['pop_upper_ci'], color='indigo', alpha=0.15, label='95% Confidence Band')
 
 ax2.set_ylabel('Total Cumulative Population (In Millions)', color='indigo', fontsize=11, fontweight='bold')
-ax2.set_ylim(0, df_display['population_millions'].max() * 1.25)
+ax2.set_ylim(0, df_display['population_millions'].max() * 1.35)
 
 labels = [h.get_label() for h in handles]
 ax1.legend(handles, labels, loc='upper left', shadow=True, fontsize=9)
 ax1.grid(True, linestyle=':', alpha=0.5)
 ax1.set_xticks(df_display['year'])
-
-# Rotations and tight layout configurations
 ax1.set_xticklabels(df_display['year'], rotation=90, ha='center') 
 fig.tight_layout() 
 
 st.pyplot(fig)
+
 st.subheader(f"📋 Dataset Summary Grid view: {selected_region}")
 st.dataframe(df_display[['year', 'population_millions', 'births_millions', 'deaths_millions', 'net_growth_millions', 'data_type']], use_container_width=True)
 
