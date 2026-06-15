@@ -105,15 +105,17 @@ def generate_forecasts(df, model_type="Ridge"):
         p_birth = m_births.predict(X_future_poly)
         p_death = m_deaths.predict(X_future_poly)
         
-        last_pop = df_modern[df_modern['year'] == 2026]['population_millions'].values
-        last_birth = df_modern[df_modern['year'] == 2026]['births_millions'].values
-        last_death = df_modern[df_modern['year'] == 2026]['deaths_millions'].values
+        # Pull single scalar float points using indexing
+        last_pop = float(df_modern[df_modern['year'] == 2026]['population_millions'].values[0])
+        last_birth = float(df_modern[df_modern['year'] == 2026]['births_millions'].values[0])
+        last_death = float(df_modern[df_modern['year'] == 2026]['deaths_millions'].values[0])
         
-        shift_pop = float(last_pop - m_pop.predict(poly.transform([[2026]])))
-        shift_birth = float(last_birth - m_births.predict(poly.transform([[2026]])))
-        shift_death = float(last_death - m_deaths.predict(poly.transform([[2026]])))
+        # FIXED: Extracting elements via .item() to ensure single math scalars are calculated
+        shift_pop = float(last_pop - m_pop.predict(poly.transform([[2026]]))[0].item())
+        shift_birth = float(last_birth - m_births.predict(poly.transform([[2026]]))[0].item())
+        shift_death = float(last_death - m_deaths.predict(poly.transform([[2026]]))[0].item())
         
-        growth_step = float((last_pop - df_modern[df_modern['year'] == 2025]['population_millions'].values) * 0.95)
+        growth_step = float((last_pop - df_modern[df_modern['year'] == 2025]['population_millions'].values[0]) * 0.95)
         
         residuals = df_modern['population_millions'].values - m_pop.predict(X_train_poly)
         sigma = np.std(residuals) if np.std(residuals) > 0 else 0.1
@@ -139,7 +141,6 @@ def generate_forecasts(df, model_type="Ridge"):
 st.sidebar.header("🎛️ Dashboard Configuration")
 regions_list = sorted(df_base['region'].unique())
 
-# Added unique keys to guarantee element isolation inside memory
 selected_region = st.sidebar.selectbox(
     "Select Target State/UT:", regions_list, 
     index=regions_list.index("India (Total Country)"),
