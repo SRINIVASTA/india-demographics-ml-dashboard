@@ -164,8 +164,11 @@ labels = [h.get_label() for h in handles]
 ax1.legend(handles, labels, loc='upper left', shadow=True, fontsize=9)
 ax1.grid(True, linestyle=':', alpha=0.5)
 ax1.set_xticks(df_display['year'])
-plt.xticks(rotation=90)
-plt.tight_layout()
+# 🛠️ Change 1: Force the rotation directly on the ax1 object
+ax1.set_xticklabels(df_display['year'], rotation=90, ha='center') 
+
+# 🛠️ Change 2: Use the fig object instead of plt
+fig.tight_layout() 
 
 st.pyplot(fig)
 st.subheader(f"📋 Dataset Summary Grid view: {selected_region}")
