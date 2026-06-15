@@ -164,7 +164,7 @@ labels = [h.get_label() for h in handles]
 ax1.legend(handles, labels, loc='upper left', shadow=True, fontsize=9)
 ax1.grid(True, linestyle=':', alpha=0.5)
 ax1.set_xticks(df_display['year'])
-plt.xticks(rotation=45)
+plt.xticks(rotation=90)
 plt.tight_layout()
 
 st.pyplot(fig)
