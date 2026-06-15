@@ -1,4 +1,4 @@
-# India Demographics ML Dashboard [![Run Pytest Automation](https://github.com)](https://github.io)
+# India Demographics ML Dashboard [![Run Pytest Automation](https://github.com)](https://github.com)
 
 ### **Created by Srinivasta** 🚀
 
