@@ -47,7 +47,7 @@ def load_all_india_matrix():
         "Ladakh": {1901: (0.020, 41.00, 39.50), 1951: (0.040, 33.50, 18.20), 2011: (0.274, 14.20, 6.50), 2026: (0.310, 12.50, 9.270)},
         "India (Total Country)": {1901: (238.400, 45.80, 44.40), 1951: (361.090, 39.90, 27.40), 2011: (1210.190, 21.80, 7.10), 2026: (1448.460, 15.50, 7.30)}
     }
-    time_series_rows = []
+time_series_rows = []
     all_years = sorted(list(range(1901, 1942, 10)) + list(range(1951, 2027)))
     for region, anchors in certified_anchors.items():
         anchor_years = sorted(list(anchors.keys()))
@@ -96,7 +96,6 @@ def generate_forecasts(df):
         last_birth = df_modern[df_modern['year'] == 2026]['births_millions'].values[0]
         last_death = df_modern[df_modern['year'] == 2026]['deaths_millions'].values[0]
         
-        # FIXED: Extracting values as single scalars using item() or float conversion to prevent ValueError arrays loop
         shift_pop = float(last_pop - p_pop[0])
         shift_birth = float(last_birth - p_birth[0])
         shift_death = float(last_death - p_death[0])
@@ -115,23 +114,31 @@ def generate_forecasts(df):
     return pd.concat([df, pd.DataFrame(ml_rows)], ignore_index=True)
 
 df_complete = generate_forecasts(df_base)
+
+# ==========================================
+# 1. DEFINE SIDEBAR CONFIGURATIONS FIRST
+# ==========================================
 st.sidebar.header("🎛️ Dashboard Configuration")
 selected_region = st.sidebar.selectbox("Select Target State/UT:", sorted(df_complete['region'].unique()))
 
+available_years = sorted(list(df_complete['year'].unique()))
+# Keep defaults at (1951, 2036) or custom bounds to map the slider range safely
+from_year, to_year = st.sidebar.select_slider("Select Project Analysis Horizon Window:", options=available_years, value=(1951, 2036))
+
 # ==========================================
-# 2. DASHBOARD HEADERS (Now completely safe!)
+# 2. DYNAMIC DASHBOARD HEADERS (Completely Fixed!)
 # ==========================================
+# FIXED: Using from_year, to_year, and selected_region variables directly
 st.title(f"📊 {selected_region} Demographic Dashboard ({from_year}–{to_year})")
-st.caption(f"Blends historical tracking benchmarks with continuous Ridge Regression forecasting updates for {region_select}.")
+st.caption(f"Blends historical tracking benchmarks with continuous Ridge Regression forecasting updates for {selected_region}.")
 
 st.subheader("Official Government Transitions Fused with Continuous ML Projections")
 
-available_years = sorted(list(df_complete['year'].unique()))
-from_year, to_year = st.sidebar.select_slider("Select Project Analysis Horizon Window:", options=available_years, value=(2011, 2036))
-
+# Filter execution matrix using configured scope boundaries
 df_display = df_complete[(df_complete['region'] == selected_region) & (df_complete['year'] >= from_year) & (df_complete['year'] <= to_year)].sort_values('year')
 df_hist = df_display[df_display['data_type'] == "Government Certified Base"]
 df_fore = df_display[df_display['data_type'] == "ML Forecast Projection"]
+
 fig, ax1 = plt.subplots(figsize=(12, 5.5))
 handles = []
 
@@ -166,10 +173,9 @@ labels = [h.get_label() for h in handles]
 ax1.legend(handles, labels, loc='upper left', shadow=True, fontsize=9)
 ax1.grid(True, linestyle=':', alpha=0.5)
 ax1.set_xticks(df_display['year'])
-# 🛠️ Change 1: Force the rotation directly on the ax1 object
-ax1.set_xticklabels(df_display['year'], rotation=90, ha='center') 
 
-# 🛠️ Change 2: Use the fig object instead of plt
+# Rotations and tight layout configurations
+ax1.set_xticklabels(df_display['year'], rotation=90, ha='center') 
 fig.tight_layout() 
 
 st.pyplot(fig)
