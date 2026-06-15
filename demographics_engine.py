@@ -106,6 +106,7 @@ def generate_forecasts(df, model_type="Ridge"):
         shift_death = float(last_death - m_deaths.predict(poly.transform([[2026]])).item())
         
         growth_step = float((last_pop - df_modern[df_modern['year'] == 2025]['population_millions'].values[0]) * 0.95)
+        
         residuals = df_modern['population_millions'].values - m_pop.predict(X_train_poly)
         sigma = np.std(residuals) if np.std(residuals) > 0 else 0.1
         
@@ -113,6 +114,7 @@ def generate_forecasts(df, model_type="Ridge"):
             p_val = max(0.001, float(p_pop[idx]) + shift_pop + (yr - 2026) * growth_step)
             b_val = max(0.000, float(p_birth[idx]) + shift_birth)
             d_val = max(0.000, float(p_death[idx]) + shift_death)
+            
             uncertainty_spread = sigma * np.sqrt(yr - 2026) * 1.96
             
             ml_rows.append({
