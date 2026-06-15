@@ -80,9 +80,9 @@ df_base = load_all_india_matrix()
 @st.cache_data
 def generate_forecasts(df, model_type="Ridge"):
     ml_rows = []
-    future_years = np.array(range(2027, 2037)).reshape(-1, 1)
+    years_list = list(range(2027, 2037))
+    future_years = np.array(years_list).reshape(-1, 1)
     
-    # Ensemble selection logic
     if model_type == "Lasso":
         estimator = Lasso(alpha=0.01, max_iter=10000)
     elif model_type == "Linear Regression":
@@ -105,21 +105,21 @@ def generate_forecasts(df, model_type="Ridge"):
         p_birth = m_births.predict(X_future_poly)
         p_death = m_deaths.predict(X_future_poly)
         
-        last_pop = df_modern[df_modern['year'] == 2026]['population_millions'].values
-        last_birth = df_modern[df_modern['year'] == 2026]['births_millions'].values
-        last_death = df_modern[df_modern['year'] == 2026]['deaths_millions'].values
+        last_pop = df_modern[df_modern['year'] == 2026]['population_millions'].values[0]
+        last_birth = df_modern[df_modern['year'] == 2026]['births_millions'].values[0]
+        last_death = df_modern[df_modern['year'] == 2026]['deaths_millions'].values[0]
         
-        shift_pop = float(last_pop - m_pop.predict(poly.transform([])))
-        shift_birth = float(last_birth - m_births.predict(poly.transform([])))
-        shift_death = float(last_death - m_deaths.predict(poly.transform([])))
+        # FIXED: Pass a proper 2D array [[2026]] to avoid shape validation crashes
+        shift_pop = float(last_pop - m_pop.predict(poly.transform([[2026]]))[0])
+        shift_birth = float(last_birth - m_births.predict(poly.transform([[2026]]))[0])
+        shift_death = float(last_death - m_deaths.predict(poly.transform([[2026]]))[0])
         
-        growth_step = float((last_pop - df_modern[df_modern['year'] == 2025]['population_millions'].values) * 0.95)
+        growth_step = float((last_pop - df_modern[df_modern['year'] == 2025]['population_millions'].values[0]) * 0.95)
         
-        # Calculate standard deviation residuals for 95% CI fanning
         residuals = df_modern['population_millions'].values - m_pop.predict(X_train_poly)
         sigma = np.std(residuals) if np.std(residuals) > 0 else 0.1
         
-        for idx, yr in enumerate(range(2027, 2037)):
+        for idx, yr in enumerate(years_list):
             p_val = max(0.001, float(p_pop[idx]) + shift_pop + (yr - 2026) * growth_step)
             b_val = max(0.000, float(p_birth[idx]) + shift_birth)
             d_val = max(0.000, float(p_death[idx]) + shift_death)
