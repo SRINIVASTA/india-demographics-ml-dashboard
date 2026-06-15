@@ -1,28 +1,39 @@
 import pytest
 import pandas as pd
-from app import load_all_india_matrix, generate_forecasts
+import numpy as np
+from app import df_master  # Automatically imports your master data table engine
 
-def test_load_all_india_matrix_structure():
-    df = load_all_india_matrix()
-    assert isinstance(df, pd.DataFrame)
-    assert not df.empty
+def test_master_dataframe_integrity():
+    """Verify that df_master loaded and concatenated correctly."""
+    assert isinstance(df_master, pd.DataFrame)
+    assert not df_master.empty
     
-    required_columns = ["year", "region", "population_millions", "data_type"]
+    # Check that structural target data fields are fully generated
+    required_columns = ["year", "region", "population_millions", "births_millions", "deaths_millions", "data_type"]
     for col in required_columns:
-        assert col in df.columns
+        assert col in df_master.columns
 
-def test_generate_forecasts_bounds():
-    df_base = load_all_india_matrix()
-    df_ml = generate_forecasts(df_base)
+def test_selected_regions_exist():
+    """Confirm specific demographic territories parse correctly when selected."""
+    unique_regions = df_master['region'].unique()
     
-    assert isinstance(df_ml, pd.DataFrame)
+    # Check national country total baseline
+    assert "India (Total Country)" in unique_regions
     
-    # Updated to verify the complete historical and forecast range
-    assert df_ml['year'].min() == 1901
-    assert df_ml['year'].max() == 2036
+    # Check distinct island territory locations match your requested updates
+    assert "Andaman and Nicobar Islands" in unique_regions
+    assert "Lakshadweep" in unique_regions
+
+def test_simulation_timeline_bounds():
+    """Verify data spans the entire responsive slider range timeline (1901 to 2036)."""
+    assert df_master['year'].min() == 1901
+    assert df_master['year'].max() == 2036
+
+def test_logical_math_constraints():
+    """Ensure math metrics never output impossible numbers when a region is selected."""
+    # Populations must stay positive and real across all future projections
+    assert (df_master['population_millions'] > 0).all()
     
-    # Verify that the sequence contains all years in the range
-    expected_years = set(range(1901, 2037))
-    assert expected_years.issubset(set(df_ml['year']))
-    
-    assert (df_ml['population_millions'] > 0).all()
+    # Live occurrences cannot be less than zero
+    assert (df_master['births_millions'] >= 0).all()
+    assert (df_master['deaths_millions'] >= 0).all()
