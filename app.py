@@ -121,7 +121,7 @@ selected_region = st.sidebar.selectbox("Select Target State/UT:", sorted(df_comp
 # ==========================================
 # 2. DASHBOARD HEADERS (Now completely safe!)
 # ==========================================
-st.title(f"📊 {region_select} Demographic Dashboard ({year_range[0]}–{year_range[1]})")
+st.title(f"📊 {selected_region} Demographic Dashboard ({year_range[0]}–{year_range[1]})")
 st.caption(f"Blends historical tracking benchmarks with continuous Ridge Regression forecasting updates for {region_select}.")
 
 st.subheader("Official Government Transitions Fused with Continuous ML Projections")
